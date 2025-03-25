@@ -1,0 +1,18 @@
+body {
+    direction: rtl;
+    text-align: right;
+    font-family: "Almarai", sans-serif;
+}
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    font-family: "Almarai", sans-serif;
+}
+
+.features .features-item i {
+    margin-left: 20px;
+    margin-right: 0px;
+}

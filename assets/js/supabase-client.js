@@ -52,27 +52,8 @@ function hideLoader() {
 // Initialize data loading
 async function initializeData() {
   try {
-    // Hide body initially
-    document.body.style.opacity = "0";
-
-    // First authenticate
-    const {
-      data: { user },
-      error: authError,
-    } = await supabaseClient.auth.signInWithPassword({
-      email: AUTO_LOGIN_EMAIL,
-      password: AUTO_LOGIN_PASSWORD,
-    });
-
-    if (authError) {
-      console.error("Auto-login failed:", authError.message);
-      const { error: signupError } = await autoSignUp();
-      if (signupError) throw signupError;
-    }
-
-    // Load all data in parallel
     const [
-      navData,
+      navItems,
       navSettings,
       heroData,
       aboutData,
@@ -83,14 +64,11 @@ async function initializeData() {
       featuresData,
       clientsData,
       statsSettings,
-      statsData,
       faqSettings,
       faqData,
       rewardsSettings,
       rewardsData,
       contactData,
-      footerSettings,
-      footerSocialLinks,
     ] = await Promise.all([
       fetchData("navigation_menu_items"),
       fetchData("navigation_settings"),
@@ -103,19 +81,15 @@ async function initializeData() {
       fetchData("features"),
       fetchData("clients_items"),
       fetchData("stats_settings"),
-      fetchData("stats_items"),
       fetchData("faq_settings"),
       fetchData("faq_items"),
       fetchData("rewards_settings"),
       fetchData("rewards_items"),
       fetchData("contact_settings"),
-      fetchData("footer_settings"),
-      fetchData("footer_social_links"),
     ]);
 
-    // Update all sections
-    if (navData) updateNavbar(navData);
-    if (navSettings) updateNavigationSettings(navSettings[0]);
+    if (navItems) updateNavbar(navItems);
+    if (navSettings?.[0]) updateNavigationSettings(navSettings[0]);
     if (heroData) updateHero(heroData);
     if (aboutData) updateAbout(aboutData);
     if (servicesSettings && servicesData)
@@ -129,8 +103,6 @@ async function initializeData() {
     if (rewardsSettings && rewardsData)
       updateRewards(rewardsSettings, rewardsData);
     if (contactData) updateContact(contactData);
-    if (footerSettings && footerSocialLinks)
-      updateFooter(footerSettings, footerSocialLinks);
 
     // Show content with smooth transition
     document.body.style.transition = "opacity 0.3s ease-in";
@@ -381,9 +353,13 @@ async function updateStats(settings) {
   // Update title and subtitle
   const title = statsSection.querySelector(".subheading h3");
   const subtitle = statsSection.querySelector(".subheading p");
-  
-  if (title) title.textContent = settings.title || "What We Have Achieved So Far";
-  if (subtitle) subtitle.textContent = settings.subtitle || "At Dalil In, we've built a strong foundation by connecting businesses with customers, enhancing engagement, and driving results. Here's a glimpse of our journey.";
+
+  if (title)
+    title.textContent = settings.title || "What We Have Achieved So Far";
+  if (subtitle)
+    subtitle.textContent =
+      settings.subtitle ||
+      "At Dalil In, we've built a strong foundation by connecting businesses with customers, enhancing engagement, and driving results. Here's a glimpse of our journey.";
 
   const statsContainer = statsSection.querySelector(".row");
   if (!statsContainer) return;
@@ -400,20 +376,20 @@ async function updateStats(settings) {
   const statsData = [
     {
       number: settings.businesses,
-      label: settings.businesses_label
+      label: settings.businesses_label,
     },
     {
       number: settings.campaigns,
-      label: settings.campaigns_label
+      label: settings.campaigns_label,
     },
     {
       number: settings.support_hours,
-      label: settings.support_hours_label
+      label: settings.support_hours_label,
     },
     {
       number: settings.team_members,
-      label: settings.team_members_label
-    }
+      label: settings.team_members_label,
+    },
   ];
 
   statsContainer.innerHTML = statsData
@@ -579,161 +555,6 @@ function updateContact(data) {
   if (email) email.textContent = contact.email;
 }
 
-// Update footer section
-function updateFooter(settings, socialLinks) {
-  if (!settings || !settings[0]) return;
-  const footer = settings[0];
-
-  const footerSection = document.querySelector("#footer");
-  if (!footerSection) return;
-
-  const logo = footerSection.querySelector(".sitename img");
-  if (logo && footer.logo_url) {
-    logo.src = footer.logo_url;
-    logo.alt = footer.company_name || "Footer Logo";
-  }
-
-  const tagline = footerSection.querySelector("p");
-  if (tagline) tagline.textContent = footer.tagline || "";
-
-  // Update copyright text
-  const copyright = footerSection.querySelector(".copyright");
-  if (copyright) {
-    copyright.innerHTML = `<span>Copyright</span> <strong class="px-1 sitename">Dalilin</strong> <span>All Rights Reserved</span>`;
-  }
-
-  // Update credits section with dynamic text from database
-  const credits = footerSection.querySelector(".credits");
-  if (credits) {
-    credits.innerHTML = footer.copyright_text || "© Dalil In. All Rights Reserved. Designed and Distributed by Dalil In Company.";
-  }
-
-  const socialLinksContainer = footerSection.querySelector(".social-links");
-  if (socialLinksContainer && socialLinks) {
-    socialLinksContainer.innerHTML = socialLinks
-      .map(
-        (link) => `
-      <a href="${link.url || "#"}" target="_blank" title="${link.name || ""}">
-        <i class="${link.icon || "bi bi-link"}"></i>
-      </a>
-    `
-      )
-      .join("");
-  }
-}
-
-// Set up real-time subscriptions for all tables
-const tables = [
-  "navigation_menu_items",
-  "navigation_settings",
-  "hero_settings",
-  "about_settings",
-  "services_settings",
-  "services",
-  "cta_settings",
-  "features_settings",
-  "features",
-  "clients_items",
-  "stats_settings",
-  "stats_items",
-  "faq_settings",
-  "faq_items",
-  "rewards_settings",
-  "rewards_items",
-  "contact_settings",
-  "footer_settings",
-  "footer_social_links",
-];
-
-const channel = supabaseClient.channel("table_changes");
-
-tables.forEach((table) => {
-  channel.on(
-    "postgres_changes",
-    { event: "*", schema: "public", table: table },
-    async (payload) => {
-      console.log(`${table} update:`, payload);
-      const data = await fetchData(table);
-
-      // Call appropriate update function based on table
-      switch (table) {
-        case "navigation_menu_items":
-          if (data) updateNavbar(data);
-          break;
-        case "navigation_settings":
-          if (data) updateNavigationSettings(data[0]);
-          break;
-        case "hero_settings":
-          if (data) updateHero(data);
-          break;
-        case "about_settings":
-          if (data) updateAbout(data);
-          break;
-        case "services":
-        case "services_settings":
-          const [settings, services] = await Promise.all([
-            fetchData("services_settings"),
-            fetchData("services"),
-          ]);
-          if (settings && services) updateServices(settings, services);
-          break;
-        case "cta_settings":
-          if (data) updateCTA(data);
-          break;
-        case "features":
-        case "features_settings":
-          const [fSettings, features] = await Promise.all([
-            fetchData("features_settings"),
-            fetchData("features"),
-          ]);
-          if (fSettings && features) updateFeatures(fSettings, features);
-          break;
-        case "clients_items":
-          if (data) updateClients(data);
-          break;
-        case "stats_items":
-        case "stats_settings":
-          const [sSettings, stats] = await Promise.all([
-            fetchData("stats_settings"),
-            fetchData("stats_items"),
-          ]);
-          if (sSettings) updateStats(sSettings[0]);
-          break;
-        case "faq_items":
-        case "faq_settings":
-          const [faqSettings, faqs] = await Promise.all([
-            fetchData("faq_settings"),
-            fetchData("faq_items"),
-          ]);
-          if (faqSettings && faqs) updateFAQ(faqSettings, faqs);
-          break;
-        case "rewards_items":
-        case "rewards_settings":
-          const [rSettings, rewards] = await Promise.all([
-            fetchData("rewards_settings"),
-            fetchData("rewards_items"),
-          ]);
-          if (rSettings && rewards) updateRewards(rSettings, rewards);
-          break;
-        case "contact_settings":
-          if (data) updateContact(data);
-          break;
-        case "footer_settings":
-        case "footer_social_links":
-          const [ftrSettings, socialLinks] = await Promise.all([
-            fetchData("footer_settings"),
-            fetchData("footer_social_links"),
-          ]);
-          if (ftrSettings && socialLinks)
-            updateFooter(ftrSettings, socialLinks);
-          break;
-      }
-    }
-  );
-});
-
-channel.subscribe();
-
 // Update navigation settings
 function updateNavigationSettings(settings) {
   if (!settings) return;
@@ -755,26 +576,24 @@ function updateNavbar(navItems) {
   const navList = document.querySelector("#navmenu ul");
   if (!navList) return;
 
-  // Clear existing items
-  navList.innerHTML = "";
-
   // Sort items by order_index
   const sortedItems = [...navItems].sort(
     (a, b) => a.order_index - b.order_index
   );
 
-  // Add new items
-  sortedItems.forEach((item) => {
-    const li = document.createElement("li");
-    if (item.name === "Language Switch") {
-      // Special handling for language switch
-      li.innerHTML = `<a href="${item.link}" class="language-switch"><i class="bi bi-translate"></i> العربية</a>`;
-    } else {
-      // Regular menu items
-      li.innerHTML = `<a href="${item.link}" ${
-        item.link === "#hero" ? 'class="active"' : ""
-      }>${item.name}</a>`;
-    }
-    navList.appendChild(li);
-  });
+  // Get the existing language switch item
+  const languageSwitch =
+    navList.querySelector(".language-switch").parentElement.outerHTML;
+
+  // Add new items before the language switch
+  const menuItems = sortedItems
+    .map(
+      (item) =>
+        `<li><a href="${item.link}" ${
+          item.link === "#hero" ? 'class="active"' : ""
+        }>${item.name}</a></li>`
+    )
+    .join("");
+
+  navList.innerHTML = menuItems + languageSwitch;
 }

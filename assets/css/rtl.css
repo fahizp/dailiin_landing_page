@@ -3,6 +3,7 @@ body {
     text-align: right;
     font-family: "Almarai", sans-serif;
 }
+
 h1,
 h2,
 h3,
@@ -15,4 +16,10 @@ h6 {
 .features .features-item i {
     margin-left: 20px;
     margin-right: 0px;
+}
+
+
+.contact .info-item i {
+
+    margin-left: 15px;
 }
